@@ -1,6 +1,143 @@
-Set-Content -Path index.html -Value @"
 <!DOCTYPE html>
-<meta charset="utf-8" />
-<title>WeChat 活码</title>
-<h1>部署成功！</h1>
-<p>这是 GitHub Pages 用户主页。接下来把活码模板替换进来即可。</p>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>微信群活码｜Join Our WeChat Group</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+          Arial;
+        display: flex;
+        min-height: 100svh;
+      }
+      .wrap {
+        margin: auto;
+        padding: 24px;
+        max-width: 680px;
+        width: 100%;
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 12px;
+      }
+      p {
+        margin: 8px 0;
+        line-height: 1.6;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 16px;
+        padding: 20px;
+      }
+      .qr-box {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 16px 0;
+      }
+      .qr-box img {
+        width: min(80vw, 380px);
+        aspect-ratio: 1/1;
+        object-fit: contain;
+        image-rendering: crisp-edges;
+        border-radius: 12px;
+      }
+      .info {
+        font-size: 0.9rem;
+        opacity: 0.8;
+      }
+      .error {
+        color: #b00020;
+        font-weight: 600;
+      }
+      .btn {
+        display: inline-block;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid #999;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>微信群活码</h1>
+      <p class="info">扫描下方二维码即可加入。此页面会随二维码到期定期更新。</p>
+      <div id="panel" class="card">
+        <div class="qr-box" id="qrBox">
+          <p>正在加载二维码…</p>
+        </div>
+        <div id="status" class="info"></div>
+        <div style="margin-top: 12px">
+          <a class="btn" id="refreshBtn" href="#">手动刷新</a>
+        </div>
+      </div>
+      <p class="info">如果无法加入或提示过期，请稍后重试或联系管理员。</p>
+    </div>
+
+    <script>
+      async function loadQR() {
+        const statusEl = document.getElementById("status");
+        const box = document.getElementById("qrBox");
+        statusEl.textContent = "";
+        box.innerHTML = "<p>正在加载二维码…</p>";
+
+        try {
+          // 加时间戳，避免 current.json 被缓存
+          const res = await fetch("data/current.json?ts=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!res.ok) throw new Error("配置文件加载失败");
+          const data = await res.json();
+
+          if (!data || !data.qr) throw new Error("配置缺少 qr 字段");
+          const imgUrl =
+            data.qr + (data.qr.includes("?") ? "&" : "?") + "ts=" + Date.now();
+
+          const img = new Image();
+          img.alt = "最新微信群二维码";
+          img.onload = () => {
+            box.innerHTML = "";
+            box.appendChild(img);
+          };
+          img.onerror = () => {
+            box.innerHTML = '<p class="error">二维码图片加载失败</p>';
+          };
+          img.src = imgUrl;
+
+          // 过期提示（可选）
+          if (data.expires) {
+            const exp = new Date(data.expires);
+            if (!isNaN(exp.getTime())) {
+              const now = new Date();
+              if (exp < now) {
+                statusEl.innerHTML =
+                  '⚠️ <span class="error">当前二维码已过期</span>（到期：' +
+                  exp.toLocaleString() +
+                  "）。请稍后刷新或联系管理员更新。";
+              } else {
+                statusEl.textContent = "有效期至：" + exp.toLocaleString();
+              }
+            }
+          }
+        } catch (e) {
+          box.innerHTML =
+            '<p class="error">无法加载配置：' + (e.message || e) + "</p>";
+        }
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        loadQR();
+      });
+
+      loadQR();
+    </script>
+  </body>
+</html>
